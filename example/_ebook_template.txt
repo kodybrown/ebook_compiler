@@ -1,0 +1,240 @@
+<html>
+<head>
+  <title>My book title</title>
+  <style media="all">
+    /*
+	    http://meyerweb.com/eric/tools/css/reset/ 
+	    v2.0 | 20110126
+	    License: none (public domain)
+    */
+
+    /*html, body, div, span, applet, object, iframe,
+    h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+    a, abbr, acronym, address, big, cite, code,
+    del, dfn, em, img, ins, kbd, q, s, samp,
+    small, strike, strong, sub, sup, tt, var,
+    b, u, i, center,
+    dl, dt, dd, ol, ul, li,
+    fieldset, form, label, legend,
+    table, caption, tbody, tfoot, thead, tr, th, td,
+    article, aside, canvas, details, embed,
+    figure, figcaption, footer, header, hgroup,
+    menu, nav, output, ruby, section, summary,
+    time, mark, audio, video {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      font-size: 100%;
+      font: inherit;
+      font-family: Serif;
+      font-size: 1em;
+      vertical-align: baseline;
+      color: #333;
+      letter-spacing: 1px;
+    }*/
+
+    * {
+      color: #333;
+    }
+
+    /* HTML5 display-role reset for older browsers */
+    article, aside, details, figcaption, figure,
+    footer, header, hgroup, menu, nav, section {
+      display: block;
+    }
+
+    body {
+      /*line-height: 1.2em;*/
+    }
+
+    p {
+      display: block;
+      margin-top: 1em;
+      margin-bottom: 1em;
+    }
+
+    b {
+      font-weight: bold;
+    }
+
+    small {
+      font-size: 80%;
+    }
+
+    sup {
+      vertical-align: super;
+      font-size: 0.8em;
+    }
+
+    ol, ul {
+      list-style: none;
+    }
+
+    blockquote, q {
+      quotes: none;
+    }
+
+      blockquote:before, blockquote:after,
+      q:before, q:after {
+        content: '';
+        content: none;
+      }
+
+    table {
+      border-collapse: collapse;
+      border-spacing: 0;
+      border: solid 0px;
+    }
+
+    td {
+    }
+
+    pre {
+      padding: 7px;
+      margin: 0px 6px 0px 6px;
+    }
+
+    h1, h2, h3, h4, h5 {
+      color: #000;
+      font-family: Serif;
+      font-weight: bold;
+    }
+
+    h1 {
+      page-break-before: always;
+      font-family: sans-serif;
+      Xfont-size: 3em;
+      Xfont-weight: bold;
+      Xpadding: 100px 100px 0px 100px;
+    }
+
+    h2 {
+      Xpage-break-before: always;
+      Xfont-family: serif;
+      Xfont-size: 2.25em;
+      Xfont-weight: bold;
+      padding: 20px 0px 0px 0px;
+    }
+
+    h3 {
+      Xfont-family: serif;
+      Xfont-size: 1.75em;
+      Xfont-weight: bold;
+      padding: 14px 0px 14px 0px;
+    }
+
+    h4 {
+      Xfont-family: sans-serif;
+      Xfont-weight: bold;
+      Xfont-size: 1em;
+      Xmargin-top: 1em;
+      Xmargin-bottom: 1em;
+    }
+
+    p, pre, code {
+      /*font-size: 11pt;*/
+    }
+
+    code {
+      /*line-height: 20px;*/
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+
+    a, a:hover {
+      color: #111;
+      text-decoration: none;
+      border-bottom: 1px dotted;
+      letter-spacing: 1px;
+    }
+
+      a:hover {
+      }
+
+    .book_title {
+      font-family: Serif;
+      font-size: 62px;
+      font-weight: normal;
+      text-align: center;
+      margin: 460px 40px 0px 40px;
+      text-rendering: optimizelegibility;
+    }
+
+    .book_version {
+      font-family: Serif;
+      font-size: 18px;
+      font-weight: normal;
+      text-align: center;
+      margin: 40px 40px 0px 40px;
+      text-rendering: optimizelegibility;
+    }
+
+    .book_author {
+      font-family: Serif;
+      font-size: 22px;
+      font-weight: normal;
+      text-align: right;
+      margin: 560px 40px 200px 40px;
+      text-rendering: optimizelegibility;
+    }
+
+    .book_dedication {
+      page-break-before: always;
+      page-break-after: always;
+      font-family: Serif;
+      font-size: 16px;
+      font-style: italic;
+      font-weight: bold;
+      text-align: center;
+      vertical-align: middle;
+      padding: 260px 0px 260px 0px;
+      margin: 40px;
+      text-rendering: optimizelegibility;
+    }
+
+    p.license img {
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+
+    div.section {
+      margin-left: 100px;
+      margin-right: 100px;
+      margin-bottom: 140px;
+    }
+
+    .task {
+      font-family: sans-serif;
+      font-weight: bold;
+      font-size: 1em;
+      margin-top: 1em;
+      margin-bottom: 1em;
+      /*border-bottom: solid 1px #ccc;*/
+    }
+  </style>
+  <style media="print">
+    h1 {
+      padding: 800px 100px 40px 100px;
+    }
+  </style>
+  <style media="screen">
+    * {
+      text-rendering: optimizelegibility;
+    }
+
+    body {
+      margin: 2em;
+      max-width: 780px;
+    }
+
+    pre {
+      background-color: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+  @SPLIT@
+</body>
+</html>
