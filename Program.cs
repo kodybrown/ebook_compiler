@@ -2,39 +2,59 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Text;
 using System.Threading;
+using Ionic.Zip;
 
 namespace ebook_compiler
 {
 	public class Program
 	{
-		public static bool DEBUG;
-		public static bool DEBUG2;
-		public static bool PAUSE;
-		public static bool RESET;
+		static bool DEBUG;
+		static bool DEBUG2;
+		static bool PAUSE;
+		static bool RESET;
+		static int TOCLEVELS;
+
+		static string tmp;
 
 		public static int Main( string[] args )
 		{
 			string p;
-			string tmp;
+			string configfile;
 			List<FileInfo> mdfiles;
 			FileInfo fil;
+			FileInfo filtoc;
 			List<string> htmlfiles;
 			StringBuilder res;
 			string templatefile;
 			string header;
 			string footer;
 			string title;
+			string tocfile;
 			List<string> exts;
 			string outfile;
+			string zipname;
+			string zipfile;
+			string resfoldername;
+			string respath;
+			List<string> resources;
 			DateTime startTime;
 			TimeSpan tspan;
+
+			startTime = DateTime.Now;
+			p = Environment.CurrentDirectory;
+
+			Console.WriteLine("=> Processing..");
 
 			DEBUG = true;
 			DEBUG2 = false;
 			PAUSE = false;
 			RESET = false;
+			TOCLEVELS = 3;
+
+			configfile = string.Empty;
 
 			foreach (string a in args) {
 				if (a.Equals("pause", StringComparison.CurrentCultureIgnoreCase)) {
@@ -44,22 +64,30 @@ namespace ebook_compiler
 					DEBUG2 = true;
 				} else if (a.Equals("reset", StringComparison.CurrentCultureIgnoreCase)) {
 					RESET = true;
+				} else if (a.StartsWith("config:", StringComparison.CurrentCultureIgnoreCase)) {
+					configfile = a.Substring("config:".Length).Trim();
+				} else if (a.StartsWith("toc:", StringComparison.CurrentCultureIgnoreCase)) {
+					int.TryParse(a.Substring("toc:".Length).Trim(), out TOCLEVELS);
 				} else {
 					Console.WriteLine("Unknown command-line argument: " + a);
 					return 1;
 				}
 			}
 
-			Console.WriteLine("=> Processing..");
-
-			startTime = DateTime.Now;
-			p = Environment.CurrentDirectory;
+			if (configfile.Length == 0) {
+				configfile = Path.GetFileNameWithoutExtension(Assembly.GetEntryAssembly().Location) + ".config"; // "_ebook_config.txt";
+			}
+			if (!Path.IsPathRooted(configfile)) {
+				configfile = Path.Combine(p, configfile);
+			}
 
 			if (DEBUG) {
-				Console.WriteLine("   Loading _ebook_config.txt..");
+				Console.WriteLine("   Loading " + Path.GetFileName(configfile) + "..");
 			}
-			LoadConfig(p, out title, out exts);
+			LoadConfig(p, configfile, out title, out tocfile, out exts, out zipname, out resfoldername, out resources);
 			outfile = Path.Combine(p, title + ".html");
+			zipfile = Path.Combine(p, zipname);
+			respath = Path.Combine(p, resfoldername);
 
 			tmp = Path.Combine(Path.GetTempPath(), "ebook_compiler-" + Path.GetFileName(title));
 			mdfiles = new List<FileInfo>();
@@ -73,7 +101,7 @@ namespace ebook_compiler
 
 			if (RESET) {
 				Console.WriteLine("   Resetting..");
-				foreach (string f in Directory.GetFiles(tmp, "*.*", SearchOption.TopDirectoryOnly)) {
+				foreach (string f in Directory.GetFiles(tmp, "*.*", SearchOption.AllDirectories)) {
 					if (File.Exists(f)) {
 						File.SetAttributes(f, FileAttributes.Normal);
 						File.Delete(f);
@@ -108,11 +136,13 @@ namespace ebook_compiler
 			}
 			foreach (FileInfo f in mdfiles) {
 				fil = new FileInfo(Path.Combine(tmp, Path.GetFileNameWithoutExtension(f.Name) + ".html"));
+				filtoc = new FileInfo(Path.Combine(tmp, Path.GetFileNameWithoutExtension(f.Name) + ".html.toc"));
 				// Does a generated html file exist for the current file?
-				if (fil.Exists) {
+				if (fil.Exists && filtoc.Exists) {
 					// Does the file html need to be updated?
-					if (f.LastWriteTime != fil.LastWriteTime) {
+					if (f.LastWriteTime != fil.LastWriteTime || f.LastWriteTime != filtoc.LastWriteTime) {
 						// Regenerate html file
+						PreProcess(f, filtoc);
 						Compile(f, fil);
 					} else {
 						if (DEBUG2) {
@@ -121,9 +151,59 @@ namespace ebook_compiler
 					}
 				} else {
 					// Generate html file
+					PreProcess(f, filtoc);
 					Compile(f, fil);
 				}
 			}
+
+			// Get all of the generated toc files
+			htmlfiles = new List<string>();
+			htmlfiles.AddRange(Directory.GetFiles(tmp, "*.html.toc", SearchOption.TopDirectoryOnly));
+
+			// Generate the table of contents
+			if (DEBUG) {
+				Console.WriteLine("   Creating table of contents..");
+			}
+
+			// Sort the generated toc files (just like the .md files)
+			htmlfiles.Sort(delegate( string a, string b )
+			{
+				int result;
+				long aa;
+				long bb;
+				aa = GetNumFromName(Path.GetFileName(a));
+				bb = GetNumFromName(Path.GetFileName(b));
+				if ((result = aa.CompareTo(bb)) == 0) {
+					return string.Compare(a, b, StringComparison.CurrentCultureIgnoreCase);
+				}
+				return result;
+			});
+
+			res = new StringBuilder();
+			foreach (string f in htmlfiles) {
+				foreach (string l in File.ReadAllLines(f)) {
+					if (l.Trim().Length == 0) {
+						continue;
+					}
+					res.AppendLine(l);
+				}
+			}
+
+			// Write the table of contents out..
+			string tocmd = Path.Combine(tmp, "toc.md");
+			using (StreamWriter w = File.CreateText(tocmd)) {
+				w.Write(res.ToString());
+				w.Close();
+			}
+			if (tocfile.Length > 0) {
+				if (!Path.IsPathRooted(tocfile)) {
+					tocfile = Path.Combine(Path.GetDirectoryName(tocmd), tocfile);
+				}
+			} else {
+				tocfile = Path.Combine(Path.GetDirectoryName(tocmd), Path.GetFileNameWithoutExtension(tocmd)) + ".htm";
+			}
+			Compile(new FileInfo(tocmd), new FileInfo(tocfile));
+
 
 			// Get all of the generated html files
 			htmlfiles = new List<string>();
@@ -194,8 +274,32 @@ namespace ebook_compiler
 			}
 			File.WriteAllText(outfile, res.ToString());
 
+			if (DEBUG) {
+				Console.WriteLine("\r\n   Zipping file and images folder..");
+				Console.WriteLine("----> " + Path.GetFileName(zipfile));
+			}
+			if (File.Exists(zipfile)) {
+				File.SetAttributes(zipfile, FileAttributes.Normal);
+				File.Delete(zipfile);
+			}
+			try {
+				using (ZipFile zip = new ZipFile()) {
+					zip.AddFile(outfile, string.Empty);
+					if (Directory.Exists(respath)) {
+						foreach (string ext in resources) {
+							foreach (string f in Directory.GetFiles(respath, ext, SearchOption.TopDirectoryOnly)) {
+								zip.AddFile(f, resfoldername);
+							}
+						}
+					}
+					zip.Save(zipfile);
+				}
+			} catch (Exception ex) {
+				Console.Error.WriteLine("Exception occurred while creating zip file: " + ex);
+			}
+
+
 			Console.WriteLine("\r\n   Process is complete.");
-			//Thread.Sleep(250);
 
 			if (PAUSE) {
 				Console.Write("   Press any key to continue ");
@@ -211,18 +315,20 @@ namespace ebook_compiler
 			return 0;
 		}
 
-		private static void LoadConfig( string p, out string title, out List<string> exts )
+		private static void LoadConfig( string p, string configfile, out string title, out string tocname, out List<string> exts, out string zipname, out string resfolder, out List<string> resources )
 		{
-			string file;
 			string[] ar;
 			string arg;
 
-			file = Path.Combine(p, "_ebook_config.txt");
 			title = string.Empty;
+			tocname = string.Empty;
 			exts = new List<string>();
+			zipname = string.Empty;
+			resfolder = string.Empty;
+			resources = new List<string>();
 
-			if (File.Exists(file)) {
-				foreach (string l in File.ReadAllLines(file)) {
+			if (File.Exists(configfile)) {
+				foreach (string l in File.ReadAllLines(configfile)) {
 					if (l.StartsWith(";") || l.StartsWith("#") || l.Length == 0 || l.IndexOf("=") == -1) {
 						continue;
 					}
@@ -232,8 +338,16 @@ namespace ebook_compiler
 
 					if (arg.Equals("title", StringComparison.CurrentCultureIgnoreCase)) {
 						title = ar[1].Trim();
+					} else if (arg.Equals("toc", StringComparison.CurrentCultureIgnoreCase)) {
+						tocname = ar[1].Trim();
 					} else if (arg.Equals("ext", StringComparison.CurrentCultureIgnoreCase)) {
-						exts.Add("*." + ar[1].Trim().TrimStart('*', '.'));
+						exts.Add(ar[1].Trim());
+					} else if (arg.Equals("zip", StringComparison.CurrentCultureIgnoreCase)) {
+						zipname = ar[1].Trim();
+					} else if (arg.Equals("resource_folder", StringComparison.CurrentCultureIgnoreCase)) {
+						resfolder = ar[1].Trim();
+					} else if (arg.Equals("resource", StringComparison.CurrentCultureIgnoreCase)) {
+						resources.Add(ar[1].Trim());
 					}
 				}
 			}
@@ -241,9 +355,23 @@ namespace ebook_compiler
 			if (title.Length == 0) {
 				title = "ebook";
 			}
+			//if (tocname.Length == 0) {
+			//	tocname = string.Empty;
+			//}
 			if (exts.Count == 0) {
 				exts.Add("*.md");
 			}
+			if (zipname.Length == 0) {
+				zipname = "ebook.zip";
+			}
+			if (resfolder.Length == 0) {
+				resfolder = "resources";
+			}
+			if (resources.Count == 0) {
+				resources.Add("*.png");
+				resources.Add("*.jpg");
+			}
+
 		}
 
 		private static long GetNumFromName( string name )
@@ -266,6 +394,102 @@ namespace ebook_compiler
 			return result;
 		}
 
+		static string[] padding = new string[] {
+			"",
+			"",
+			"&nbsp;&nbsp;",
+			"&nbsp;&nbsp;&nbsp;&nbsp;",
+			"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;",
+			"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;",
+			"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;",
+			"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+		};
+
+		private static void PreProcess( FileInfo input, FileInfo filtoc )
+		{
+			string[] lines;
+			string name;
+			string label;
+			int index;
+
+			if (filtoc.Exists) {
+				filtoc.Delete();
+			}
+
+			lines = File.ReadAllLines(input.FullName);
+			index = -1;
+
+			// Copy the input file to the temporary folder (before editing it)..
+			string srcname = input.FullName;
+			FileInfo srcfile;
+			string tmpfile = Path.Combine(tmp, input.Name);
+			if (File.Exists(tmpfile)) {
+				File.SetAttributes(tmpfile, FileAttributes.Normal);
+				File.Delete(tmpfile);
+			}
+			input.MoveTo(tmpfile);
+			input.CopyTo(srcname);
+
+			srcfile = new FileInfo(srcname);
+
+			srcfile.CreationTime = input.CreationTime;
+			srcfile.LastAccessTime = input.LastAccessTime;
+			srcfile.LastWriteTime = input.LastWriteTime;
+
+			using (StreamWriter w = filtoc.CreateText()) {
+				for (int i = 0; i < lines.Length; i++) {
+					string l = lines[i];
+
+					if (l.StartsWith("#")) {
+						if (l.StartsWith("######")) {
+							index = 6;
+						} else if (l.StartsWith("#####")) {
+							index = 5;
+						} else if (l.StartsWith("####")) {
+							index = 4;
+						} else if (l.StartsWith("###")) {
+							index = 3;
+						} else if (l.StartsWith("##")) {
+							index = 2;
+						} else if (l.StartsWith("#")) {
+							index = 1;
+						} else {
+							continue;
+						}
+
+						//int k = l.IndexOf("<");
+						//if (k > -1) {
+						//	label = l.Substring(index, k - index).Trim();
+						//} else {
+						label = l.Substring(index).Trim();
+						//}
+						//if (label.Length == 0) {
+						//	// The item already has an anchor in it!
+						//	continue;
+						//}
+						name = label.Replace(" ", "_").Replace("\"", "_").Replace(".", "-").Replace(",", "-");
+
+						//## <a name="Table_of_Contents"></a> Table of Contents
+						lines[i] = new string('#', index) + " <a name=\"" + name + "\"></a> " + label;
+
+						if (index <= TOCLEVELS) {
+							//&nbsp;&nbsp;&nbsp;&nbsp;[Table of Contents](#Table_of_Contents) <br/>
+							w.WriteLine(padding[index] + "[" + label + "](#" + name + ")<br/>");
+						}
+					} else if (l.StartsWith(" #")) {
+						lines[i] = l.TrimStart();
+					}
+				}
+				w.Close();
+			}
+
+			File.WriteAllLines(input.FullName, lines);
+
+			filtoc.CreationTime = input.CreationTime;
+			filtoc.LastAccessTime = input.LastAccessTime;
+			filtoc.LastWriteTime = input.LastWriteTime;
+		}
+
 		private static void Compile( FileInfo input, FileInfo output )
 		{
 			Process p;
@@ -276,7 +500,13 @@ namespace ebook_compiler
 
 			info = new ProcessStartInfo();
 			info.FileName = md;
-			info.Arguments = "\"" + input.FullName + "\" \"" + output.FullName + "\"";
+
+			if (output != null) {
+				info.Arguments = "\"" + input.FullName + "\" \"" + output.FullName + "\"";
+			} else {
+				info.Arguments = "\"" + input.FullName + "\"";
+			}
+
 			info.WorkingDirectory = input.Directory.FullName;
 			info.WindowStyle = ProcessWindowStyle.Hidden;
 
@@ -289,8 +519,12 @@ namespace ebook_compiler
 
 			if (p.ExitCode != 0) {
 				Console.WriteLine("**** Error compiling: " + input.FullName);
+				Console.ReadKey(true);
 			}
 
+			if (output == null) {
+				output = new FileInfo(Path.Combine(input.DirectoryName, Path.GetFileNameWithoutExtension(input.FullName)) + ".html");
+			}
 			output.CreationTime = input.CreationTime;
 			output.LastAccessTime = input.LastAccessTime;
 			output.LastWriteTime = input.LastWriteTime;
