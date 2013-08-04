@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -272,6 +272,8 @@ namespace ebook_compiler
 			ProcessStartInfo info;
 			string md;
 
+// my batch, used for other purposes as well, basically does this..
+// "c:\Tools\Perl64\bin\perl.exe" "c:\Kody\Root\Markdown.pl" --html4tags "%~1" > "%~2"
 			md = @"C:\Kody\Root\Markdown.bat";
 
 			info = new ProcessStartInfo();
