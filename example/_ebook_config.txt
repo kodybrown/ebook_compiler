@@ -1,2 +1,9 @@
-title=My book title
+title=My ebook title
 ext=*.md
+toc=5_toc.html
+zip=_ebook.zip
+resource_folder=resources
+resource=*.png
+output_filenames=true
+template=_ebook_template.txt
+markdown_compiler=C:\YourPath\Markdown.bat
