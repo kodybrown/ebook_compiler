@@ -63,7 +63,9 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy "$(TargetPath)"  "c:\Kody\Documents\Workspaces\Debian Linux for Windows Users (ebook)\ebook\_ebook_compiler.exe"</PostBuildEvent>
+    <PostBuildEvent>if exist "%25UserProfile%25\Root" copy "$(TargetPath)"  "%25UserProfile%25\Root\_ebook_compiler.exe"
+if exist "C:\Users\Kody\Documents\Projects\#Debian Linux for Windows Users (ebook)\ebook" copy "$(TargetPath)"  "C:\Users\Kody\Documents\Projects\#Debian Linux for Windows Users (ebook)\ebook\_ebook_compiler.exe"
+</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
